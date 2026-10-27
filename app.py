@@ -2,68 +2,73 @@ import streamlit as st
 from openai import OpenAI
 import base64
 
-st.set_page_config(page_title="Estúdio Raízes e Sonhos", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="ChatGPT - Raízes e Sonhos", page_icon="💬", layout="centered")
 
-st.title("🎬 Diretor de Arte — Raízes e Sonhos")
-st.caption("Agente Oficial conectado à API da OpenAI (Geração 9:16)")
+# Estilização visual para ficar idêntico ao ChatGPT
+st.markdown("""
+    <style>
+    .stChatMessage { border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("💬 ChatGPT • Diretor de Arte")
+st.caption("Série: Raízes e Sonhos (Salvador, BA)")
 
 DIRETRIZ_SERIE = """
-Você é o Diretor de Arte Oficial da série 'Raízes e Sonhos' (Salvador, Bahia).
-Sua função é transformar a descrição da cena em um prompt visual detalhado para gerar uma imagem vertical 9:16 (1024x1792).
-
-ESTILO VISUAL OBRIGATÓRIO:
-- Renderização 3D semirrealista cinematográfica de alto orçamento (texturas de pele reais, fios de cabelo detalhados).
-- Iluminação dourada quente de fim de tarde em Salvador (Golden Hour) entrando pela janela + luz interna suave incandescente.
-- PROIBIDO estilo cartoon infantil/Pixar, olhos esbugalhados ou rostos plásticos.
-
-PERSONAGENS PRINCIPAIS (MANTENHA 100% DE FIDELIDADE ÀS FOTOS ANEXADAS):
-- MILENA (17 anos): Jovem negra, pele morena quente, rosto delicado proporcional, longas tranças pretas (box braids) com pequenos anéis prateados, camiseta básica amarela.
-- LÚCIA (14 anos): Irmã mais nova, pele morena quente, cabelo preto cacheado volumoso na altura dos ombros, regata azul-marinho e colar fino com pingente de borboleta.
-- ROSÂNGELA (40 anos): Mãe, mulher negra madura com expressão digna e cansaço real do trabalho, cabelo cacheado volumoso preso no alto (coque abacaxi), blusa floral clara, calça jeans e pano de prato nas mãos.
-
-Retorne APENAS o prompt final detalhado em inglês para o gerador de imagem, sem comentários extras.
+Você é o Diretor de Arte Oficial da série dramática 'Raízes e Sonhos' (Salvador, Bahia).
+Sua função é transformar o pedido do usuário num prompt visual cinematográfico vertical 9:16 (1024x1792) extremamente detalhado.
+ESTILO OBRIGATÓRIO: Animação 3D semirrealista de altíssimo orçamento, texturas de pele humanas reais, iluminação dourada de Golden Hour de Salvador misturada com luz interna incandescente. PROIBIDO estilo cartoon infantil ou rostos plásticos.
+PERSONAGENS PRINCIPAIS:
+- Milena (17 anos): Jovem negra, pele morena quente, tranças box braids pretas longas com anéis prateados, regata amarela.
+- Lúcia (14 anos): Irmã, pele morena quente, cabelo cacheado volumoso nos ombros, regata azul-marinho, colar de borboleta.
+- Rosângela (40 anos): Mãe, mulher negra madura, expressão digna e cansada, cabelo cacheado preso em coque abacaxi, blusa floral, pano de prato.
+Retorne APENAS o prompt visual final detalhado em inglês para o gerador de imagem, mantendo 100% de fidelidade às referências visuais enviadas.
 """
 
+# Barra lateral limpa apenas para chave e configurações essenciais
 with st.sidebar:
-    st.header("⚙️ Configurações da API")
+    st.header("⚙️ Configurações")
     api_key = st.text_input("OpenAI API Key (sk-...)", value=st.secrets.get("OPENAI_API_KEY", ""), type="password")
     
     st.divider()
-    st.subheader("📸 Referências da Cena")
+    st.markdown("### 📎 Anexos e Referências")
     uploaded_files = st.file_uploader(
-        "Anexe as fotos de referência (Milena, Lúcia, Rosângela):", 
-        type=["png", "jpg", "jpeg"], 
+        "Envie fotos dos personagens ou referências de cena:", 
+        type=["png", "jpg", "jpeg", "webp"], 
         accept_multiple_files=True
     )
     
-    gerar_imagem = st.checkbox("Gerar Imagem Automaticamente (Vertical 9:16)", value=True)
-    modelo_img = st.selectbox("Modelo de Imagem:", ["dall-e-3", "gpt-image-1"])
-    qualidade_img = st.selectbox("Qualidade:", ["standard", "hd"])
+    gerar_imagem = st.checkbox("Gerar Imagem Automaticamente (9:16)", value=True)
+    qualidade_img = st.selectbox("Qualidade da Imagem:", ["standard", "hd"])
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Exibe o histórico de conversas na tela estilo chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if "image_url" in msg:
             st.image(msg["image_url"], use_container_width=True)
 
-if prompt := st.chat_input("Descreva a cena do episódio aqui..."):
+# Caixa de texto principal do chat (onde você digita como no ChatGPT)
+if prompt := st.chat_input("Digite sua cena ou comando aqui..."):
     if not api_key:
-        st.error("Por favor, cole sua OpenAI API Key (sk-...) na barra lateral esquerda!")
+        st.error("Por favor, insira sua chave da API OpenAI na barra lateral esquerda.")
         st.stop()
 
     client = OpenAI(api_key=api_key.strip())
 
+    # Adiciona a mensagem do usuário no histórico
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("O Diretor de Arte está montando a cena..."):
+        with st.spinner("Processando direção de arte..."):
             try:
-                user_content = [{"type": "text", "text": f"Cena solicitada: {prompt}"}]
+                # Prepara o conteúdo multimodal (texto + imagens enviadas no uploader)
+                user_content = [{"type": "text", "text": f"Pedido do usuário: {prompt}"}]
                 
                 if uploaded_files:
                     for file in uploaded_files:
@@ -73,6 +78,7 @@ if prompt := st.chat_input("Descreva a cena do episódio aqui..."):
                             "image_url": {"url": f"data:{file.type};base64,{b64_img}"}
                         })
                 
+                # Gera o prompt otimizado usando GPT-4o
                 chat_resp = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -82,26 +88,19 @@ if prompt := st.chat_input("Descreva a cena do episódio aqui..."):
                 )
                 resposta_agente = chat_resp.choices[0].message.content
 
-                with st.expander("Ver Prompt Técnico criado pelo Agente"):
+                with st.expander("Ver Prompt Técnico Criado"):
                     st.write(resposta_agente)
 
+                # Dispara a geração de imagem sem erros de incompatibilidade de modelo
                 if gerar_imagem:
                     with st.spinner("Renderizando frame vertical 9:16..."):
-                        if modelo_img == "dall-e-3":
-                            img_response = client.images.generate(
-                                model="dall-e-3",
-                                prompt=resposta_agente[:3900],
-                                size="1024x1792",
-                                quality=qualidade_img,
-                                n=1,
-                            )
-                        else:
-                            img_response = client.images.generate(
-                                model="gpt-image-1",
-                                prompt=resposta_agente[:3900],
-                                size="1024x1536",
-                                n=1,
-                            )
+                        img_response = client.images.generate(
+                            model="dall-e-3",
+                            prompt=resposta_agente[:3900],
+                            size="1024x1792",
+                            quality=qualidade_img,
+                            n=1,
+                        )
                         image_url = img_response.data[0].url
                         st.image(image_url, caption="Frame Gerado (9:16)", use_container_width=True)
                         st.session_state.messages.append({
@@ -114,4 +113,4 @@ if prompt := st.chat_input("Descreva a cena do episódio aqui..."):
                     st.session_state.messages.append({"role": "assistant", "content": resposta_agente})
 
             except Exception as e:
-                st.error(f"Erro na API: {str(e)}")
+                st.error(f"Erro na API da OpenAI: {str(e)}")
