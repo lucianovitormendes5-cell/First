@@ -7,12 +7,12 @@ st.set_page_config(page_title="Raízes e Sonhos - Diretor de Arte", page_icon="�
 st.title("🎬 Raízes e Sonhos • Diretor de Arte")
 st.caption("Sistema Privado de Geração de Cenas (9:16)")
 
-# SUA CHAVE DE API FIXA (Segura pois seu repositório está privado)
-API_KEY_FIXA = "sk-proj-vLVQdELUOA8t283HC1Ql_1H78O77k8t2D7S89xY..." # (Substitua por sua chave inteira se necessário, ou use a gravada)
+# SUA CHAVE DE API OFICIAL COMPLETA E FIXA
+MINHA_API_KEY = "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"
 
 DIRETRIZ_SERIE = """
 Você é o Diretor de Arte Oficial da série 'Raízes e Sonhos' (Salvador, Bahia).
-Transforme o pedido da cena num prompt visual cinematográfico vertical 9:16 (1024x1792) detalhado.
+Transforme o pedido da cena num prompt visual cinematográfico vertical detalhado em inglês.
 ESTILO OBRIGATÓRIO: Animação 3D semirrealista de alto orçamento, texturas de pele humanas reais, iluminação dourada de Golden Hour de Salvador misturada com luz interna incandescente. PROIBIDO estilo cartoon infantil ou rostos plásticos.
 PERSONAGENS PRINCIPAIS:
 - Milena (17 anos): Jovem negra, pele morena quente, tranças box braids pretas longas com anéis prateados, regata amarela.
@@ -21,9 +21,10 @@ PERSONAGENS PRINCIPAIS:
 Retorne APENAS o prompt visual final detalhado em inglês para o gerador de imagem, mantendo 100% de fidelidade às referências visuais.
 """
 
+# Barra lateral limpa apenas para anexar as fotos de referência dos personagens
 with st.sidebar:
     st.header("⚙️ Painel de Controle")
-    st.success("🔒 Chave de API carregada automaticamente!")
+    st.success("🔒 Chave de API fixa carregada com sucesso!")
     
     st.divider()
     st.markdown("### 📎 Fotos dos Personagens")
@@ -33,7 +34,7 @@ with st.sidebar:
         accept_multiple_files=True
     )
     
-    gerar_imagem = st.checkbox("Gerar Imagem Automaticamente (9:16)", value=True)
+    gerar_imagem = st.checkbox("Gerar Imagem Automaticamente", value=True)
     qualidade_img = st.selectbox("Qualidade:", ["standard", "hd"])
 
 if "messages" not in st.session_state:
@@ -45,9 +46,8 @@ for msg in st.session_state.messages:
         if "image_url" in msg:
             st.image(msg["image_url"], use_container_width=True)
 
-if prompt := st.chat_input("Digite a cena ou o diálogo aqui..."):
-    # Usa a chave fixa embutida no código
-    client = OpenAI(api_key="SUA_CHAVE_COMPLETA_AQUI") # Cole aqui sua chave completa sk-proj-...
+if prompt := st.chat_input("Digite a cena ou o comando aqui..."):
+    client = OpenAI(api_key=MINHA_API_KEY.strip())
 
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -79,7 +79,7 @@ if prompt := st.chat_input("Digite a cena ou o diálogo aqui..."):
                     st.write(resposta_agente)
 
                 if gerar_imagem:
-                    with st.spinner("Renderizando frame vertical 9:16..."):
+                    with st.spinner("Renderizando frame vertical..."):
                         img_response = client.images.generate(
                             model="dall-e-3",
                             prompt=resposta_agente[:3900],
@@ -88,7 +88,7 @@ if prompt := st.chat_input("Digite a cena ou o diálogo aqui..."):
                             n=1,
                         )
                         image_url = img_response.data[0].url
-                        st.image(image_url, caption="Frame Gerado (9:16)", use_container_width=True)
+                        st.image(image_url, caption="Frame Gerado", use_container_width=True)
                         st.session_state.messages.append({
                             "role": "assistant", 
                             "content": "Frame gerado com sucesso!", 
