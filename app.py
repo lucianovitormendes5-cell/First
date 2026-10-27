@@ -7,12 +7,10 @@ st.set_page_config(page_title="Raízes e Sonhos - Estúdio", page_icon="🎬", l
 st.title("🎬 Raízes e Sonhos • Estúdio de Cenas")
 st.caption("Ambiente Privado de Criação (9:16)")
 
-# Chave de API fixa para uso exclusivo e privado
-MINHA_API_KEY = "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"
-
 with st.sidebar:
     st.header("⚙️ Painel de Controle")
-    st.success("🔒 Conectado com sucesso!")
+    # Campo seguro para inserir a chave nova gerada no painel da OpenAI
+    api_key_input = st.text_input("OpenAI API Key (sk-...):", type="password")
     
     st.divider()
     st.markdown("### 📎 Anexos e Referências")
@@ -35,7 +33,11 @@ for msg in st.session_state.messages:
             st.image(msg["image_url"], use_container_width=True)
 
 if prompt := st.chat_input("Digite o seu comando ou descrição da cena..."):
-    client = OpenAI(api_key=MINHA_API_KEY.strip())
+    if not api_key_input:
+        st.error("Por favor, insira a sua nova chave de API da OpenAI na barra lateral esquerda.")
+        st.stop()
+
+    client = OpenAI(api_key=api_key_input.strip())
 
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -54,7 +56,6 @@ if prompt := st.chat_input("Digite o seu comando ou descrição da cena..."):
                             "image_url": {"url": f"data:{file.type};base64,{b64_img}"}
                         })
                 
-                # Chat livre guiado puramente pelas instruções que você der no chat
                 chat_resp = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
