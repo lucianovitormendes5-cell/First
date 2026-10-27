@@ -2,73 +2,61 @@ import streamlit as st
 from openai import OpenAI
 import base64
 
-st.set_page_config(page_title="ChatGPT - Raízes e Sonhos", page_icon="💬", layout="centered")
+st.set_page_config(page_title="Raízes e Sonhos - Diretor de Arte", page_icon="🎬", layout="centered")
 
-# Estilização visual para ficar idêntico ao ChatGPT
-st.markdown("""
-    <style>
-    .stChatMessage { border-radius: 12px; padding: 10px; margin-bottom: 10px; }
-    </style>
-""", unsafe_allow_html=True)
+st.title("🎬 Raízes e Sonhos • Diretor de Arte")
+st.caption("Sistema Privado de Geração de Cenas (9:16)")
 
-st.title("💬 ChatGPT • Diretor de Arte")
-st.caption("Série: Raízes e Sonhos (Salvador, BA)")
+# SUA CHAVE DE API FIXA (Segura pois seu repositório está privado)
+API_KEY_FIXA = "sk-proj-vLVQdELUOA8t283HC1Ql_1H78O77k8t2D7S89xY..." # (Substitua por sua chave inteira se necessário, ou use a gravada)
 
 DIRETRIZ_SERIE = """
-Você é o Diretor de Arte Oficial da série dramática 'Raízes e Sonhos' (Salvador, Bahia).
-Sua função é transformar o pedido do usuário num prompt visual cinematográfico vertical 9:16 (1024x1792) extremamente detalhado.
-ESTILO OBRIGATÓRIO: Animação 3D semirrealista de altíssimo orçamento, texturas de pele humanas reais, iluminação dourada de Golden Hour de Salvador misturada com luz interna incandescente. PROIBIDO estilo cartoon infantil ou rostos plásticos.
+Você é o Diretor de Arte Oficial da série 'Raízes e Sonhos' (Salvador, Bahia).
+Transforme o pedido da cena num prompt visual cinematográfico vertical 9:16 (1024x1792) detalhado.
+ESTILO OBRIGATÓRIO: Animação 3D semirrealista de alto orçamento, texturas de pele humanas reais, iluminação dourada de Golden Hour de Salvador misturada com luz interna incandescente. PROIBIDO estilo cartoon infantil ou rostos plásticos.
 PERSONAGENS PRINCIPAIS:
 - Milena (17 anos): Jovem negra, pele morena quente, tranças box braids pretas longas com anéis prateados, regata amarela.
 - Lúcia (14 anos): Irmã, pele morena quente, cabelo cacheado volumoso nos ombros, regata azul-marinho, colar de borboleta.
 - Rosângela (40 anos): Mãe, mulher negra madura, expressão digna e cansada, cabelo cacheado preso em coque abacaxi, blusa floral, pano de prato.
-Retorne APENAS o prompt visual final detalhado em inglês para o gerador de imagem, mantendo 100% de fidelidade às referências visuais enviadas.
+Retorne APENAS o prompt visual final detalhado em inglês para o gerador de imagem, mantendo 100% de fidelidade às referências visuais.
 """
 
-# Barra lateral limpa apenas para chave e configurações essenciais
 with st.sidebar:
-    st.header("⚙️ Configurações")
-    api_key = st.text_input("OpenAI API Key (sk-...)", value=st.secrets.get("OPENAI_API_KEY", ""), type="password")
+    st.header("⚙️ Painel de Controle")
+    st.success("🔒 Chave de API carregada automaticamente!")
     
     st.divider()
-    st.markdown("### 📎 Anexos e Referências")
+    st.markdown("### 📎 Fotos dos Personagens")
     uploaded_files = st.file_uploader(
-        "Envie fotos dos personagens ou referências de cena:", 
+        "Anexe as fotos de referência:", 
         type=["png", "jpg", "jpeg", "webp"], 
         accept_multiple_files=True
     )
     
     gerar_imagem = st.checkbox("Gerar Imagem Automaticamente (9:16)", value=True)
-    qualidade_img = st.selectbox("Qualidade da Imagem:", ["standard", "hd"])
+    qualidade_img = st.selectbox("Qualidade:", ["standard", "hd"])
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Exibe o histórico de conversas na tela estilo chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if "image_url" in msg:
             st.image(msg["image_url"], use_container_width=True)
 
-# Caixa de texto principal do chat (onde você digita como no ChatGPT)
-if prompt := st.chat_input("Digite sua cena ou comando aqui..."):
-    if not api_key:
-        st.error("Por favor, insira sua chave da API OpenAI na barra lateral esquerda.")
-        st.stop()
+if prompt := st.chat_input("Digite a cena ou o diálogo aqui..."):
+    # Usa a chave fixa embutida no código
+    client = OpenAI(api_key="SUA_CHAVE_COMPLETA_AQUI") # Cole aqui sua chave completa sk-proj-...
 
-    client = OpenAI(api_key=api_key.strip())
-
-    # Adiciona a mensagem do usuário no histórico
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Processando direção de arte..."):
+        with st.spinner("O Diretor de Arte está processando a cena..."):
             try:
-                # Prepara o conteúdo multimodal (texto + imagens enviadas no uploader)
-                user_content = [{"type": "text", "text": f"Pedido do usuário: {prompt}"}]
+                user_content = [{"type": "text", "text": f"Cena: {prompt}"}]
                 
                 if uploaded_files:
                     for file in uploaded_files:
@@ -78,7 +66,6 @@ if prompt := st.chat_input("Digite sua cena ou comando aqui..."):
                             "image_url": {"url": f"data:{file.type};base64,{b64_img}"}
                         })
                 
-                # Gera o prompt otimizado usando GPT-4o
                 chat_resp = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -88,10 +75,9 @@ if prompt := st.chat_input("Digite sua cena ou comando aqui..."):
                 )
                 resposta_agente = chat_resp.choices[0].message.content
 
-                with st.expander("Ver Prompt Técnico Criado"):
+                with st.expander("Ver Prompt Técnico"):
                     st.write(resposta_agente)
 
-                # Dispara a geração de imagem sem erros de incompatibilidade de modelo
                 if gerar_imagem:
                     with st.spinner("Renderizando frame vertical 9:16..."):
                         img_response = client.images.generate(
