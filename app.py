@@ -2,17 +2,31 @@ import streamlit as st
 from openai import OpenAI
 import base64
 
-# Configuração visual da página (Você pode alterar título, ícone e cores depois)
 st.set_page_config(page_title="Estúdio Raízes e Sonhos", page_icon="🎬", layout="centered")
 
 st.title("🎬 Diretor de Arte — Raízes e Sonhos")
 st.caption("Agente Oficial conectado à API da OpenAI (Geração 9:16)")
 
-# Barra lateral para colocar suas chaves (ou carregar automático dos Secrets)
+DIRETRIZ_SERIE = """
+Você é o Diretor de Arte Oficial da série 'Raízes e Sonhos' (Salvador, Bahia).
+Sua função é transformar a descrição da cena em um prompt visual detalhado para gerar uma imagem vertical 9:16 (1024x1792).
+
+ESTILO VISUAL OBRIGATÓRIO:
+- Renderização 3D semirrealista cinematográfica de alto orçamento (texturas de pele reais, fios de cabelo detalhados).
+- Iluminação dourada quente de fim de tarde em Salvador (Golden Hour) entrando pela janela + luz interna suave incandescente.
+- PROIBIDO estilo cartoon infantil/Pixar, olhos esbugalhados ou rostos plásticos.
+
+PERSONAGENS PRINCIPAIS (MANTENHA 100% DE FIDELIDADE ÀS FOTOS ANEXADAS):
+- MILENA (17 anos): Jovem negra, pele morena quente, rosto delicado proporcional, longas tranças pretas (box braids) com pequenos anéis prateados, camiseta básica amarela.
+- LÚCIA (14 anos): Irmã mais nova, pele morena quente, cabelo preto cacheado volumoso na altura dos ombros, regata azul-marinho e colar fino com pingente de borboleta.
+- ROSÂNGELA (40 anos): Mãe, mulher negra madura com expressão digna e cansaço real do trabalho, cabelo cacheado volumoso preso no alto (coque abacaxi), blusa floral clara, calça jeans e pano de prato nas mãos.
+
+Retorne APENAS o prompt final detalhado em inglês para o gerador de imagem, sem comentários extras.
+"""
+
 with st.sidebar:
     st.header("⚙️ Configurações da API")
     api_key = st.text_input("OpenAI API Key (sk-...)", value=st.secrets.get("OPENAI_API_KEY", ""), type="password")
-    assistant_id = st.text_input("ID do Agente (asst_...)", value=st.secrets.get("ASSISTANT_ID", ""))
     
     st.divider()
     st.subheader("📸 Referências da Cena")
@@ -26,92 +40,78 @@ with st.sidebar:
     modelo_img = st.selectbox("Modelo de Imagem:", ["dall-e-3", "gpt-image-1"])
     qualidade_img = st.selectbox("Qualidade:", ["standard", "hd"])
 
-# Inicializa histórico do Chat na tela
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Mostra mensagens antigas na tela (estilo ChatGPT)
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if "image_url" in msg:
             st.image(msg["image_url"], use_container_width=True)
 
-# Campo de digitação do Chat
 if prompt := st.chat_input("Descreva a cena do episódio aqui..."):
-    if not api_key or not assistant_id:
-        st.error("Por favor, preencha sua API Key e o ID do Agente na barra lateral esquerda!")
+    if not api_key:
+        st.error("Por favor, cole sua OpenAI API Key (sk-...) na barra lateral esquerda!")
         st.stop()
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key.strip())
 
-    # Mostra a sua mensagem na tela
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("O Agente está dirigindo a cena..."):
+        with st.spinner("O Diretor de Arte está montando a cena..."):
             try:
-                # 1. Cria ou recupera a Thread do seu Agente na OpenAI
-                if "thread_id" not in st.session_state:
-                    thread = client.beta.threads.create()
-                    st.session_state.thread_id = thread.id
-
-                # Prepara o conteúdo (Texto + Fotos de referência se anexadas)
-                content_payload = [{"type": "text", "text": prompt + "\n\nIMPORTANTE: Retorne APENAS o prompt visual final detalhado otimizado para geração da imagem em 9:16."}]
+                user_content = [{"type": "text", "text": f"Cena solicitada: {prompt}"}]
                 
                 if uploaded_files:
                     for file in uploaded_files:
-                        file_bytes = file.getvalue()
-                        uploaded_oai = client.files.create(file=(file.name, file_bytes), purpose="vision")
-                        content_payload.append({
-                            "type": "image_file",
-                            "image_file": {"file_id": uploaded_oai.id}
+                        b64_img = base64.b64encode(file.getvalue()).decode("utf-8")
+                        user_content.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{file.type};base64,{b64_img}"}
                         })
-
-                # 2. Envia para o seu Agente (Assistant)
-                client.beta.threads.messages.create(
-                    thread_id=st.session_state.thread_id,
-                    role="user",
-                    content=content_payload
+                
+                chat_resp = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": DIRETRIZ_SERIE},
+                        {"role": "user", "content": user_content}
+                    ]
                 )
+                resposta_agente = chat_resp.choices[0].message.content
 
-                # 3. Roda o Agente com as regras que você já salvou nele
-                run = client.beta.threads.runs.create_and_poll(
-                    thread_id=st.session_state.thread_id,
-                    assistant_id=assistant_id
-                )
+                with st.expander("Ver Prompt Técnico criado pelo Agente"):
+                    st.write(resposta_agente)
 
-                if run.status == 'completed':
-                    messages = client.beta.threads.messages.list(thread_id=st.session_state.thread_id)
-                    resposta_agente = messages.data[0].content[0].text.value
-                    
-                    with st.expander("Ver Prompt Técnico criado pelo Agente"):
-                        st.write(resposta_agente)
-
-                    # 4. Dispara a criação da imagem usando o prompt que o seu Agente montou
-                    if gerar_imagem:
-                        with st.spinner("Renderizando frame vertical 9:16..."):
+                if gerar_imagem:
+                    with st.spinner("Renderizando frame vertical 9:16..."):
+                        if modelo_img == "dall-e-3":
                             img_response = client.images.generate(
-                                model=modelo_img,
+                                model="dall-e-3",
                                 prompt=resposta_agente[:3900],
                                 size="1024x1792",
                                 quality=qualidade_img,
                                 n=1,
                             )
-                            image_url = img_response.data[0].url
-                            st.image(image_url, caption="Frame Gerado (9:16)", use_container_width=True)
-                            st.session_state.messages.append({
-                                "role": "assistant", 
-                                "content": "Frame gerado com sucesso!", 
-                                "image_url": image_url
-                            })
-                    else:
-                        st.markdown(resposta_agente)
-                        st.session_state.messages.append({"role": "assistant", "content": resposta_agente})
+                        else:
+                            img_response = client.images.generate(
+                                model="gpt-image-1",
+                                prompt=resposta_agente[:3900],
+                                size="1024x1536",
+                                n=1,
+                            )
+                        image_url = img_response.data[0].url
+                        st.image(image_url, caption="Frame Gerado (9:16)", use_container_width=True)
+                        st.session_state.messages.append({
+                            "role": "assistant", 
+                            "content": "Frame gerado com sucesso!", 
+                            "image_url": image_url
+                        })
                 else:
-                    st.error(f"Erro na execução do Agente: {run.status}")
+                    st.markdown(resposta_agente)
+                    st.session_state.messages.append({"role": "assistant", "content": resposta_agente})
 
             except Exception as e:
                 st.error(f"Erro na API: {str(e)}")
